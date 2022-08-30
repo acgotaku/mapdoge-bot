@@ -2,6 +2,12 @@ import { Telegraf } from 'telegraf';
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
+bot.start((ctx) => {
+  const message = `I can help you to query MAPCODE with Telegram.\nYou can copy plus code from Google Maps and paste it to tell me.`;
+  ctx.reply(message);
+});
+bot.help((ctx) => ctx.replyWithMarkdownV2('Send me a [plus code](https://maps.google.com/pluscodes/)'));
+
 bot.command('quit', (ctx) => {
   // Explicit usage
   ctx.telegram.leaveChat(ctx.message.chat.id);
