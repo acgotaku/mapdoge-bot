@@ -1,0 +1,15 @@
+{
+  "name": "mapdoge-bot",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/index.ts"
+  },
+  "dependencies": {
+    "telegraf": "^4.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^18.7.14"
+  }
+}
