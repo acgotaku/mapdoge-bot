@@ -1,44 +1,33 @@
 import { Telegraf } from 'telegraf';
+import axios from './axios';
+import { PlusCode, MapCodeResponse } from './types';
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
+const plusCodeRegex =
+  /([23456789CFGHJMPQRVWX]{4,6}\+[23456789CFGHJMPQRVWX]{2,3})/;
 
-bot.start((ctx) => {
+bot.start(ctx => {
   const message = `I can help you to query MAPCODE with Telegram.\nYou can copy plus code from Google Maps and paste it to tell me.`;
   ctx.reply(message);
 });
-bot.help((ctx) => ctx.replyWithMarkdownV2('Send me a [plus code](https://maps.google.com/pluscodes/)'));
 
-bot.command('quit', (ctx) => {
-  // Explicit usage
-  ctx.telegram.leaveChat(ctx.message.chat.id);
+bot.help(ctx =>
+  ctx.replyWithMarkdownV2(
+    'Send me a [plus code](https://maps.google.com/pluscodes/)'
+  )
+);
 
-  // Using context shortcut
-  ctx.leaveChat();
-});
-
-bot.on('text', (ctx) => {
-  // Explicit usage
-  ctx.telegram.sendMessage(ctx.message.chat.id, `Hello ${ctx.state.role}`);
-
-  // Using context shortcut
-  ctx.reply(`Hello ${ctx.state.role}`);
-});
-
-bot.on('callback_query', (ctx) => {
-  // Explicit usage
-  ctx.telegram.answerCbQuery(ctx.callbackQuery.id);
-
-  // Using context shortcut
-  ctx.answerCbQuery();
-});
-
-bot.on('inline_query', (ctx) => {
-  const result = [];
-  // Explicit usage
-  ctx.telegram.answerInlineQuery(ctx.inlineQuery.id, result);
-
-  // Using context shortcut
-  ctx.answerInlineQuery(result);
+bot.on('text', async ctx => {
+  const text = ctx.message.text;
+  const match = plusCodeRegex.test(text)
+  if (match) {
+    const plusCodeResult = await axios.get(`https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`) as PlusCode;
+    const location = plusCodeResult.plus_code.geometry.location;
+    const mapcode = await axios.post('https://japanmapcode.com/mapcode', `lat=${location.lat}&lng=${location.lng}`) as MapCodeResponse;
+    ctx.reply(`lat: ${location.lat}\nlng: ${location.lng}\nMapcode: ${mapcode.mapcode}`);
+  } else {
+    ctx.reply(`Invalid plus code!`);
+  }
 });
 
 bot.launch();
