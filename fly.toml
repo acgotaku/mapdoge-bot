@@ -1,0 +1,13 @@
+# fly.toml file generated for mapdoge-bot on 2022-08-30T23:03:10+09:00
+
+app = "mapdoge-bot"
+kill_signal = "SIGINT"
+kill_timeout = 5
+processes = []
+
+[env]
+  NODE_ENV = "production"
+
+[experimental]
+  allowed_public_ports = []
+  auto_rollback = true
