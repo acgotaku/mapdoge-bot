@@ -3,6 +3,7 @@
     "target": "ESNext",
     "module": "commonjs",
     "moduleResolution": "Node",
+    "outDir": "dist",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "experimentalDecorators": true,
@@ -11,5 +12,5 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": "."
   },
-  "include": ["src/"]
+  "include": ["src"]
 }

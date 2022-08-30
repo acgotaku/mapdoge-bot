@@ -24,9 +24,10 @@ bot.on('text', async ctx => {
     const plusCodeResult = await axios.get(`https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`) as PlusCode;
     const location = plusCodeResult.plus_code.geometry.location;
     const mapcode = await axios.post('https://japanmapcode.com/mapcode', `lat=${location.lat}&lng=${location.lng}`) as MapCodeResponse;
-    ctx.reply(`lat: ${location.lat}\nlng: ${location.lng}\nMapcode: ${mapcode.mapcode}`);
+    await ctx.replyWithLocation(location.lat, location.lng);
+    await ctx.reply(`Mapcode: ${mapcode.mapcode}`);
   } else {
-    ctx.reply(`Invalid plus code!`);
+    await ctx.reply(`Invalid plus code!`);
   }
 });
 
