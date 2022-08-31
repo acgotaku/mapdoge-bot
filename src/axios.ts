@@ -4,7 +4,8 @@ const INTERNAL_SERVER_ERROR = 500;
 
 const instance = axios.create();
 
-instance.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+instance.defaults.headers.post['Content-Type'] =
+  'application/x-www-form-urlencoded; charset=UTF-8';
 instance.defaults.headers.get['referer'] = 'https://plus.codes';
 
 instance.interceptors.request.use(async config => {

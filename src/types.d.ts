@@ -16,7 +16,7 @@ export interface PlusCode {
     local_code: string;
     locality: {
       local_address: string;
-    }
+    };
   };
   status: string;
 }

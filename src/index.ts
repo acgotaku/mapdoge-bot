@@ -19,11 +19,16 @@ bot.help(ctx =>
 
 bot.on('text', async ctx => {
   const text = ctx.message.text;
-  const match = plusCodeRegex.test(text)
+  const match = plusCodeRegex.test(text);
   if (match) {
-    const plusCodeResult = await axios.get(`https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`) as PlusCode;
+    const plusCodeResult = (await axios.get(
+      `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`
+    )) as PlusCode;
     const location = plusCodeResult.plus_code.geometry.location;
-    const mapcode = await axios.post('https://japanmapcode.com/mapcode', `lat=${location.lat}&lng=${location.lng}`) as MapCodeResponse;
+    const mapcode = (await axios.post(
+      'https://japanmapcode.com/mapcode',
+      `lat=${location.lat}&lng=${location.lng}`
+    )) as MapCodeResponse;
     await ctx.replyWithLocation(location.lat, location.lng);
     await ctx.reply(`Mapcode: ${mapcode.mapcode}`);
   } else {
