@@ -31,22 +31,29 @@ bot.on('text', async ctx => {
     const plusCodeResult = (await axios.get(
       `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`
     )) as PlusCode;
-    const location = plusCodeResult.plus_code.geometry.location;
-    await ctx.replyWithLocation(location.lat, location.lng);
-    if (
-      location.lat >= MIN_LAT &&
-      location.lat <= MAX_LAT &&
-      location.lng >= MIN_LNG &&
-      location.lng <= MAX_LNG
-    ) {
-      const mapcode = (await axios.post(
-        'https://japanmapcode.com/mapcode',
-        `lat=${location.lat}&lng=${location.lng}`
-      )) as MapCodeResponse;
-
-      await ctx.reply(`Mapcode: ${mapcode.mapcode}`);
+    if (plusCodeResult.status === 'OK') {
+      const location = plusCodeResult.plus_code.geometry.location;
+      await ctx.replyWithLocation(location.lat, location.lng);
+      if (
+        location.lat >= MIN_LAT &&
+        location.lat <= MAX_LAT &&
+        location.lng >= MIN_LNG &&
+        location.lng <= MAX_LNG
+      ) {
+        const mapcode = (await axios.post(
+          'https://japanmapcode.com/mapcode',
+          `lat=${location.lat}&lng=${location.lng}`
+        )) as MapCodeResponse;
+        if (mapcode.success) {
+          await ctx.reply(`Mapcode: ${mapcode.mapcode}`);
+        } else {
+          await ctx.reply('Get Mapcode failed.');
+        }
+      } else {
+        await ctx.reply(`Invalid Japan plus code!`);
+      }
     } else {
-      await ctx.reply(`Invalid Japan plus code!`);
+      await ctx.reply('Get location failed.');
     }
   } else {
     await ctx.reply(`Invalid plus code!`);
