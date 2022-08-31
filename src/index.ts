@@ -10,7 +10,7 @@ const MIN_LNG = 122;
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const plusCodeRegex =
-  /([23456789CFGHJMPQRVWX]{4,6}\+[23456789CFGHJMPQRVWX]{2,3})/;
+  /([23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3})/;
 
 bot.start(ctx => {
   const message = `I can help you to query MAPCODE with Telegram.\nYou can copy plus code from Google Maps and paste it to tell me.`;
