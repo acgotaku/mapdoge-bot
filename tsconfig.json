@@ -1,4 +1,8 @@
 {
+  "ts-node": {
+    "transpileOnly": true,
+    "require": ["typescript-transform-paths/register"]
+  },
   "compilerOptions": {
     "target": "ESNext",
     "module": "commonjs",
@@ -10,7 +14,11 @@
     "emitDecoratorMetadata": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "plugins": [{ "transform": "typescript-transform-paths" }]
   },
   "include": ["src"]
 }

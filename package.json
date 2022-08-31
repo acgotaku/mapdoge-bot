@@ -1,11 +1,11 @@
 {
   "name": "mapdoge-bot",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
-    "build": "tsc",
+    "build": "rimraf dist && ttsc -p tsconfig.json",
     "format": "prettier  --loglevel warn --write \"./**/*.{js,jsx,ts,tsx,css,md,json}\" ",
     "lint": "eslint ./src --ext .jsx,.js,.ts,.tsx --quiet --fix --ignore-path ./.gitignore"
   },
@@ -24,7 +24,10 @@
     "lint-staged": "^13.0.3",
     "nodemon": "^2.0.19",
     "prettier": "^2.7.1",
+    "rimraf": "^3.0.2",
     "ts-node": "^10.9.1",
-    "typescript": "^4.8.2"
+    "ttypescript": "^1.5.13",
+    "typescript": "^4.8.2",
+    "typescript-transform-paths": "^3.3.1"
   }
 }

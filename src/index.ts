@@ -1,6 +1,6 @@
 import { Telegraf } from 'telegraf';
-import axios from './axios';
-import { PlusCode, MapCodeResponse } from './types';
+import axios from '@/axios';
+import { PlusCode, MapCodeResponse } from '@/types';
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const plusCodeRegex =
@@ -11,11 +11,12 @@ bot.start(ctx => {
   ctx.reply(message);
 });
 
-bot.help(ctx =>
+bot.help(ctx => {
   ctx.replyWithMarkdownV2(
     'Send me a [plus code](https://maps.google.com/pluscodes/)'
-  )
-);
+  );
+  ctx.reply(`MapDoge Version ${process.env.npm_package_version}`);
+});
 
 bot.on('text', async ctx => {
   const text = ctx.message.text;
@@ -37,6 +38,7 @@ bot.on('text', async ctx => {
 });
 
 bot.launch();
+console.log(`MapDoge start with Version ${process.env.npm_package_version}`);
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));

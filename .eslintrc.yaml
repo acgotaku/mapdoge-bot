@@ -12,6 +12,3 @@ parserOptions:
   sourceType: module
 plugins:
   - '@typescript-eslint'
-settings:
-  react:
-    version: detect
