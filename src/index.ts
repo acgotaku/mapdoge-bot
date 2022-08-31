@@ -2,6 +2,12 @@ import { Telegraf } from 'telegraf';
 import axios from '@/axios';
 import { PlusCode, MapCodeResponse } from '@/types';
 
+const MAX_LAT = 45;
+const MIN_LAT = 20;
+
+const MAX_LNG = 153;
+const MIN_LNG = 122;
+
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const plusCodeRegex =
   /([23456789CFGHJMPQRVWX]{4,6}\+[23456789CFGHJMPQRVWX]{2,3})/;
@@ -26,12 +32,22 @@ bot.on('text', async ctx => {
       `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`
     )) as PlusCode;
     const location = plusCodeResult.plus_code.geometry.location;
-    const mapcode = (await axios.post(
-      'https://japanmapcode.com/mapcode',
-      `lat=${location.lat}&lng=${location.lng}`
-    )) as MapCodeResponse;
     await ctx.replyWithLocation(location.lat, location.lng);
-    await ctx.reply(`Mapcode: ${mapcode.mapcode}`);
+    if (
+      location.lat >= MIN_LAT &&
+      location.lat <= MAX_LAT &&
+      location.lng >= MIN_LNG &&
+      location.lng <= MAX_LNG
+    ) {
+      const mapcode = (await axios.post(
+        'https://japanmapcode.com/mapcode',
+        `lat=${location.lat}&lng=${location.lng}`
+      )) as MapCodeResponse;
+
+      await ctx.reply(`Mapcode: ${mapcode.mapcode}`);
+    } else {
+      await ctx.reply(`Invalid Japan plus code!`);
+    }
   } else {
     await ctx.reply(`Invalid plus code!`);
   }
