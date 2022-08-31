@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Map Doge Bot</title>
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+      }
+      p {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <p>Loading</p>
+    <form
+      id="mapcode"
+      action="https://www.drivenippon.com/mapcode/app/dn/navicon_start.php"
+      method="POST"
+    >
+      <input type="hidden" id="lat" name="lat" />
+      <input type="hidden" id="lng" name="lng" />
+    </form>
+    <script>
+      const form = document.getElementById('mapcode');
+      const latInput = document.getElementById('lat');
+      const lngInput = document.getElementById('lng');
+      const params = new URL(document.location).searchParams;
+      const lat = params.get('lat');
+      const lng = params.get('lng');
+      if (lat && lng) {
+        latInput.value = lat;
+        lngInput.value = lng;
+        form.submit();
+      } else {
+        location.href =
+          'https://www.drivenippon.com/mapcode/app/dn/mapcode_search.php';
+      }
+    </script>
+  </body>
+</html>
