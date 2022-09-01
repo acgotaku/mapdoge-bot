@@ -1,7 +1,7 @@
 {
   "name": "mapdoge-bot",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
