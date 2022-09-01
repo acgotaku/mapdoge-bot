@@ -45,7 +45,9 @@ bot.on('text', async ctx => {
           `lat=${location.lat}&lng=${location.lng}`
         )) as MapCodeResponse;
         if (mapcode.success) {
-          await ctx.reply(`Mapcode: ${mapcode.mapcode}`);
+          await ctx.replyWithHTML(
+            `Mapcode: ${mapcode.mapcode}\n<a href="https://mapdoge.tomomo.org?lat=${location.lat}&lng=${location.lng}">View on drivenippon</a>`
+          );
         } else {
           await ctx.reply('Get Mapcode failed.');
         }
