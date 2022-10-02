@@ -12,6 +12,8 @@ Open [Google Maps](https://www.google.com/maps), select any palace and copy [Plu
 
 Send Plus Code to MapDogeBot, you will get MAPCODE.
 
+![usage](./assets/usage.jpeg)
+
 **Only Japan Plus Code is valid.**
 
 ## Reference
