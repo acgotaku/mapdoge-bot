@@ -19,13 +19,15 @@ async function getPlusCode(text: string): Promise<PlusCode> {
     `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`,
     { headers: { referer: 'https://plus.codes' } }
   );
-  return res.json();
+  const data = await res.json();
+  console.log('plus.codes response:', JSON.stringify(data));
+  return data;
 }
 
 async function getMapCode(lat: number, lng: number): Promise<MapCodeResponse> {
   const res = await fetch('https://japanmapcode.com/mapcode', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
     body: `lat=${lat}&lng=${lng}`,
   });
   return res.json();
