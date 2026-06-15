@@ -1,70 +1,86 @@
 import { Telegraf } from 'telegraf';
-import axios from '@/axios';
-import { PlusCode, MapCodeResponse } from '@/types';
+import axios from './axios';
+import { PlusCode, MapCodeResponse } from './types';
 
 const MAX_LAT = 45;
 const MIN_LAT = 20;
-
 const MAX_LNG = 153;
 const MIN_LNG = 122;
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
 const plusCodeRegex =
   /([23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3})/;
 
-bot.start(ctx => {
-  const message = `I can help you to query MAPCODE with Telegram.\nYou can copy plus code from Google Maps and paste it to tell me.`;
-  ctx.reply(message);
-});
+interface Env {
+  BOT_TOKEN: string;
+}
 
-bot.help(ctx => {
-  ctx.replyWithMarkdownV2(
-    'Send me a [plus code](https://maps.google.com/pluscodes/)'
-  );
-  ctx.reply(`MapDoge Version ${process.env.npm_package_version}`);
-});
+function createBot(token: string): Telegraf {
+  const bot = new Telegraf(token);
 
-bot.on('text', async ctx => {
-  const text = ctx.message.text;
-  const match = plusCodeRegex.test(text);
-  if (match) {
+  bot.start(ctx => {
+    ctx.reply(
+      `I can help you to query MAPCODE with Telegram.\nYou can copy plus code from Google Maps and paste it to tell me.`
+    );
+  });
+
+  bot.help(ctx => {
+    ctx.replyWithMarkdownV2(
+      'Send me a [plus code](https://maps.google.com/pluscodes/)'
+    );
+  });
+
+  bot.on('text', async ctx => {
+    const text = ctx.message.text;
+    if (!plusCodeRegex.test(text)) {
+      await ctx.reply(`Invalid plus code!`);
+      return;
+    }
     const plusCodeResult = (await axios.get(
       `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`
     )) as PlusCode;
-    if (plusCodeResult.status === 'OK') {
-      const location = plusCodeResult.plus_code.geometry.location;
-      await ctx.replyWithLocation(location.lat, location.lng);
-      if (
-        location.lat >= MIN_LAT &&
-        location.lat <= MAX_LAT &&
-        location.lng >= MIN_LNG &&
-        location.lng <= MAX_LNG
-      ) {
-        const mapcode = (await axios.post(
-          'https://japanmapcode.com/mapcode',
-          `lat=${location.lat}&lng=${location.lng}`
-        )) as MapCodeResponse;
-        if (mapcode.success) {
-          await ctx.replyWithHTML(
-            `Mapcode: ${mapcode.mapcode}\n<a href="https://mapdoge.tomomo.org?lat=${location.lat}&lng=${location.lng}">View on drivenippon</a>`
-          );
-        } else {
-          await ctx.reply('Get Mapcode failed.');
-        }
+    if (plusCodeResult.status !== 'OK') {
+      await ctx.reply('Get location failed.');
+      return;
+    }
+    const location = plusCodeResult.plus_code.geometry.location;
+    await ctx.replyWithLocation(location.lat, location.lng);
+    if (
+      location.lat >= MIN_LAT &&
+      location.lat <= MAX_LAT &&
+      location.lng >= MIN_LNG &&
+      location.lng <= MAX_LNG
+    ) {
+      const mapcode = (await axios.post(
+        'https://japanmapcode.com/mapcode',
+        `lat=${location.lat}&lng=${location.lng}`
+      )) as MapCodeResponse;
+      if (mapcode.success) {
+        await ctx.replyWithHTML(
+          `Mapcode: ${mapcode.mapcode}\n<a href="https://mapdoge.tomomo.org?lat=${location.lat}&lng=${location.lng}">View on drivenippon</a>`
+        );
       } else {
-        await ctx.reply(`Invalid Japan plus code!`);
+        await ctx.reply('Get Mapcode failed.');
       }
     } else {
-      await ctx.reply('Get location failed.');
+      await ctx.reply(`Invalid Japan plus code!`);
     }
-  } else {
-    await ctx.reply(`Invalid plus code!`);
-  }
-});
+  });
 
-bot.launch();
-console.log(`MapDoge start with Version ${process.env.npm_package_version}`);
+  return bot;
+}
 
-// Enable graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    if (request.method !== 'POST') {
+      return new Response('MapDoge Bot is running!', { status: 200 });
+    }
+    try {
+      const bot = createBot(env.BOT_TOKEN);
+      const update = await request.json();
+      await bot.handleUpdate(update as any);
+      return new Response('OK', { status: 200 });
+    } catch {
+      return new Response('Internal Server Error', { status: 500 });
+    }
+  },
+};
