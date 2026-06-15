@@ -71,15 +71,15 @@ function getBot(token: string): Telegraf {
       console.error('Bot error:', err);
     });
 
-    bot.start(ctx => {
-      ctx.reply(
+    bot.start(async ctx => {
+      await ctx.reply(
         `I can help you to query MAPCODE with Telegram.\nYou can copy plus code from Google Maps and paste it to tell me.`
       );
     });
 
-    bot.help(ctx => {
-      ctx.replyWithMarkdownV2(
-        'Send me a [plus code](https://maps.google.com/pluscodes/)'
+    bot.help(async ctx => {
+      await ctx.replyWithHTML(
+        'Send me a <a href="https://maps.google.com/pluscodes/">plus code</a>'
       );
     });
 
