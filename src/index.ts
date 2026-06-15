@@ -1,4 +1,6 @@
+import { request as httpsRequest } from 'node:https';
 import { Telegraf } from 'telegraf';
+import { Update } from 'telegraf/types';
 import { PlusCode, MapCodeResponse } from './types';
 
 const MAX_LAT = 45;
@@ -14,14 +16,22 @@ interface Env {
   WEBHOOK_SECRET: string;
 }
 
-async function getPlusCode(text: string): Promise<PlusCode> {
-  const res = await fetch(
-    `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`,
-    { headers: { referer: 'https://plus.codes' } }
-  );
-  const data = await res.json();
-  console.log('plus.codes response:', JSON.stringify(data));
-  return data;
+function getPlusCode(text: string): Promise<PlusCode> {
+  return new Promise((resolve, reject) => {
+    const req = httpsRequest(
+      `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`,
+      { headers: { Referer: 'https://plus.codes' } },
+      res => {
+        let data = '';
+        res.on('data', chunk => (data += chunk));
+        res.on('end', () => {
+          try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+        });
+      }
+    );
+    req.on('error', reject);
+    req.end();
+  });
 }
 
 async function getMapCode(lat: number, lng: number): Promise<MapCodeResponse> {
@@ -101,7 +111,7 @@ export default {
     }
     try {
       const update = await request.json();
-      await getBot(env.BOT_TOKEN).handleUpdate(update as any);
+      await getBot(env.BOT_TOKEN).handleUpdate(update as Update);
       return new Response('OK', { status: 200 });
     } catch (err) {
       console.error('Fetch handler error:', err);
