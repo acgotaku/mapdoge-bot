@@ -12,60 +12,64 @@ const plusCodeRegex =
 
 interface Env {
   BOT_TOKEN: string;
+  WEBHOOK_SECRET: string;
 }
 
-function createBot(token: string): Telegraf {
-  const bot = new Telegraf(token);
+let bot: Telegraf | null = null;
 
-  bot.start(ctx => {
-    ctx.reply(
-      `I can help you to query MAPCODE with Telegram.\nYou can copy plus code from Google Maps and paste it to tell me.`
-    );
-  });
+function getBot(token: string): Telegraf {
+  if (!bot) {
+    bot = new Telegraf(token);
 
-  bot.help(ctx => {
-    ctx.replyWithMarkdownV2(
-      'Send me a [plus code](https://maps.google.com/pluscodes/)'
-    );
-  });
+    bot.start(ctx => {
+      ctx.reply(
+        `I can help you to query MAPCODE with Telegram.\nYou can copy plus code from Google Maps and paste it to tell me.`
+      );
+    });
 
-  bot.on('text', async ctx => {
-    const text = ctx.message.text;
-    if (!plusCodeRegex.test(text)) {
-      await ctx.reply(`Invalid plus code!`);
-      return;
-    }
-    const plusCodeResult = (await axios.get(
-      `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`
-    )) as PlusCode;
-    if (plusCodeResult.status !== 'OK') {
-      await ctx.reply('Get location failed.');
-      return;
-    }
-    const location = plusCodeResult.plus_code.geometry.location;
-    await ctx.replyWithLocation(location.lat, location.lng);
-    if (
-      location.lat >= MIN_LAT &&
-      location.lat <= MAX_LAT &&
-      location.lng >= MIN_LNG &&
-      location.lng <= MAX_LNG
-    ) {
-      const mapcode = (await axios.post(
-        'https://japanmapcode.com/mapcode',
-        `lat=${location.lat}&lng=${location.lng}`
-      )) as MapCodeResponse;
-      if (mapcode.success) {
-        await ctx.replyWithHTML(
-          `Mapcode: ${mapcode.mapcode}\n<a href="https://mapdoge.tomomo.org?lat=${location.lat}&lng=${location.lng}">View on drivenippon</a>`
-        );
-      } else {
-        await ctx.reply('Get Mapcode failed.');
+    bot.help(ctx => {
+      ctx.replyWithMarkdownV2(
+        'Send me a [plus code](https://maps.google.com/pluscodes/)'
+      );
+    });
+
+    bot.on('text', async ctx => {
+      const text = ctx.message.text;
+      if (!plusCodeRegex.test(text)) {
+        await ctx.reply(`Invalid plus code!`);
+        return;
       }
-    } else {
-      await ctx.reply(`Invalid Japan plus code!`);
-    }
-  });
-
+      const plusCodeResult = (await axios.get(
+        `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`
+      )) as PlusCode;
+      if (plusCodeResult.status !== 'OK') {
+        await ctx.reply('Get location failed.');
+        return;
+      }
+      const location = plusCodeResult.plus_code.geometry.location;
+      await ctx.replyWithLocation(location.lat, location.lng);
+      if (
+        location.lat >= MIN_LAT &&
+        location.lat <= MAX_LAT &&
+        location.lng >= MIN_LNG &&
+        location.lng <= MAX_LNG
+      ) {
+        const mapcode = (await axios.post(
+          'https://japanmapcode.com/mapcode',
+          `lat=${location.lat}&lng=${location.lng}`
+        )) as MapCodeResponse;
+        if (mapcode.success) {
+          await ctx.replyWithHTML(
+            `Mapcode: ${mapcode.mapcode}\n<a href="https://mapdoge.tomomo.org?lat=${location.lat}&lng=${location.lng}">View on drivenippon</a>`
+          );
+        } else {
+          await ctx.reply('Get Mapcode failed.');
+        }
+      } else {
+        await ctx.reply(`Invalid Japan plus code!`);
+      }
+    });
+  }
   return bot;
 }
 
@@ -74,10 +78,13 @@ export default {
     if (request.method !== 'POST') {
       return new Response('MapDoge Bot is running!', { status: 200 });
     }
+    const secretHeader = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
+    if (secretHeader !== env.WEBHOOK_SECRET) {
+      return new Response('Unauthorized', { status: 401 });
+    }
     try {
-      const bot = createBot(env.BOT_TOKEN);
       const update = await request.json();
-      await bot.handleUpdate(update as any);
+      await getBot(env.BOT_TOKEN).handleUpdate(update as any);
       return new Response('OK', { status: 200 });
     } catch {
       return new Response('Internal Server Error', { status: 500 });
