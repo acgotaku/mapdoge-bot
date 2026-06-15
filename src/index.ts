@@ -1,6 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { Update } from 'telegraf/types';
-import { PlusCode, MapCodeResponse } from './types';
+import { OpenLocationCode } from 'open-location-code';
+import { MapCodeResponse } from './types';
 
 const MAX_LAT = 45;
 const MIN_LAT = 20;
@@ -15,14 +16,37 @@ interface Env {
   WEBHOOK_SECRET: string;
 }
 
-async function getPlusCode(text: string): Promise<PlusCode> {
+interface Location {
+  lat: number;
+  lng: number;
+}
+
+async function resolveLocation(text: string): Promise<Location> {
+  const match = text.match(plusCodeRegex);
+  if (!match) throw new Error('No plus code found');
+  const code = match[1];
+
+  if (OpenLocationCode.isFull(code)) {
+    const area = OpenLocationCode.decode(code);
+    return { lat: area.latitudeCenter, lng: area.longitudeCenter };
+  }
+
+  // Short code — geocode the locality part with Nominatim
+  const locality = text.replace(code, '').trim().replace(/^[,\s]+/, '');
+  if (!locality) throw new Error('Short code requires a locality');
+
   const res = await fetch(
-    `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`,
-    { headers: { Referer: 'https://plus.codes' } }
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locality)}&format=json&limit=1`,
+    { headers: { 'User-Agent': 'mapdoge-bot/1.0' } }
   );
-  const data = await res.json() as PlusCode;
-  console.log('plus.codes status:', data.status);
-  return data;
+  const geo = await res.json() as Array<{ lat: string; lon: string }>;
+  if (!geo.length) throw new Error('Could not geocode locality');
+
+  const refLat = parseFloat(geo[0].lat);
+  const refLng = parseFloat(geo[0].lon);
+  const fullCode = OpenLocationCode.recoverNearest(code, refLat, refLng);
+  const area = OpenLocationCode.decode(fullCode);
+  return { lat: area.latitudeCenter, lng: area.longitudeCenter };
 }
 
 async function getMapCode(lat: number, lng: number): Promise<MapCodeResponse> {
@@ -59,15 +83,16 @@ function getBot(token: string): Telegraf {
     bot.on('text', async ctx => {
       const text = ctx.message.text;
       if (!plusCodeRegex.test(text)) {
-        await ctx.reply(`Invalid plus code!`);
+        await ctx.reply('Invalid plus code!');
         return;
       }
-      const plusCodeResult = await getPlusCode(text);
-      if (plusCodeResult.status !== 'OK') {
+      let location: Location;
+      try {
+        location = await resolveLocation(text);
+      } catch {
         await ctx.reply('Get location failed.');
         return;
       }
-      const location = plusCodeResult.plus_code.geometry.location;
       await ctx.replyWithLocation(location.lat, location.lng);
       if (
         location.lat >= MIN_LAT &&
@@ -84,7 +109,7 @@ function getBot(token: string): Telegraf {
           await ctx.reply('Get Mapcode failed.');
         }
       } else {
-        await ctx.reply(`Invalid Japan plus code!`);
+        await ctx.reply('Invalid Japan plus code!');
       }
     });
   }
