@@ -1,4 +1,3 @@
-import { request as httpsRequest } from 'node:https';
 import { Telegraf } from 'telegraf';
 import { Update } from 'telegraf/types';
 import { PlusCode, MapCodeResponse } from './types';
@@ -16,22 +15,14 @@ interface Env {
   WEBHOOK_SECRET: string;
 }
 
-function getPlusCode(text: string): Promise<PlusCode> {
-  return new Promise((resolve, reject) => {
-    const req = httpsRequest(
-      `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`,
-      { headers: { Referer: 'https://plus.codes' } },
-      res => {
-        let data = '';
-        res.on('data', chunk => (data += chunk));
-        res.on('end', () => {
-          try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
-        });
-      }
-    );
-    req.on('error', reject);
-    req.end();
-  });
+async function getPlusCode(text: string): Promise<PlusCode> {
+  const res = await fetch(
+    `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`,
+    { headers: { Referer: 'https://plus.codes' } }
+  );
+  const data = await res.json() as PlusCode;
+  console.log('plus.codes status:', data.status);
+  return data;
 }
 
 async function getMapCode(lat: number, lng: number): Promise<MapCodeResponse> {
