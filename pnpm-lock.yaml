@@ -11,6 +11,9 @@ importers:
       axios:
         specifier: ^0.27.2
         version: 0.27.2
+      open-location-code:
+        specifier: ^1.0.3
+        version: 1.0.3
       telegraf:
         specifier: ^4.9.1
         version: 4.16.3
@@ -24,6 +27,9 @@ importers:
       '@types/node':
         specifier: ^18.7.14
         version: 18.19.130
+      '@types/open-location-code':
+        specifier: ^1.0.1
+        version: 1.0.1
       '@typescript-eslint/eslint-plugin':
         specifier: ^5.36.1
         version: 5.62.0(@typescript-eslint/parser@5.62.0(eslint@8.57.1)(typescript@4.9.5))(eslint@8.57.1)(typescript@4.9.5)
@@ -226,6 +232,9 @@ packages:
 
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
+
+  '@types/open-location-code@1.0.1':
+    resolution: {integrity: sha512-txJKhrRpT2fw8RgZQUeT6qycBVIzRQ2zD7ecdLvc5R2QaeqSLcYIh1jxLSC+LjcpUT26Qyfw2UTttmhgk3sWmg==}
 
   '@types/semver@7.7.1':
     resolution: {integrity: sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA==}
@@ -1147,6 +1156,9 @@ packages:
     resolution: {integrity: sha512-1FlR+gjXK7X+AsAHso35MnyN5KqGwJRi/31ft6x0M194ht7S+rWAvd7PHss9xSKMzE0asv1pyIHaJYq+BbacAQ==}
     engines: {node: '>=12'}
 
+  open-location-code@1.0.3:
+    resolution: {integrity: sha512-DBm14BSn40Ee241n80zIFXIT6+y8Tb0I+jTdosLJ8Sidvr2qONvymwqymVbHV2nS+1gkDZ5eTNpnOIVV0Kn2fw==}
+
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
@@ -1805,6 +1817,8 @@ snapshots:
   '@types/node@20.5.1': {}
 
   '@types/normalize-package-data@2.4.4': {}
+
+  '@types/open-location-code@1.0.1': {}
 
   '@types/semver@7.7.1': {}
 
@@ -2738,6 +2752,8 @@ snapshots:
   onetime@6.0.0:
     dependencies:
       mimic-fn: 4.0.0
+
+  open-location-code@1.0.3: {}
 
   optionator@0.9.4:
     dependencies:
