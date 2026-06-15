@@ -16,21 +16,21 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v6
         with:
-          version: 7.5.0
+          version: 10.11.0
 
       - name: Set node version
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
-          node-version: '16.x'
+          node-version: '24.16.0'
           cache: 'pnpm'
 
       - name: Install deps
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: pnpm build
@@ -39,23 +39,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v6
         with:
-          version: 7.5.0
+          version: 10.11.0
 
       - name: Set node version
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
-          node-version: '16.x'
+          node-version: '24.16.0'
           cache: 'pnpm'
 
       - name: Install deps
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm lint
