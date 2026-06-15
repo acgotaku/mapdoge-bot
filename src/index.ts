@@ -11,6 +11,9 @@ const MIN_LNG = 122;
 const plusCodeRegex =
   /([23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3})/;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const olc = new OpenLocationCode() as any;
+
 interface Env {
   BOT_TOKEN: string;
   WEBHOOK_SECRET: string;
@@ -26,8 +29,8 @@ async function resolveLocation(text: string): Promise<Location> {
   if (!match) throw new Error('No plus code found');
   const code = match[1];
 
-  if (OpenLocationCode.isFull(code)) {
-    const area = OpenLocationCode.decode(code);
+  if (olc.isFull(code)) {
+    const area = olc.decode(code);
     return { lat: area.latitudeCenter, lng: area.longitudeCenter };
   }
 
@@ -44,8 +47,8 @@ async function resolveLocation(text: string): Promise<Location> {
 
   const refLat = parseFloat(geo[0].lat);
   const refLng = parseFloat(geo[0].lon);
-  const fullCode = OpenLocationCode.recoverNearest(code, refLat, refLng);
-  const area = OpenLocationCode.decode(fullCode);
+  const fullCode = olc.recoverNearest(code, refLat, refLng);
+  const area = olc.decode(fullCode);
   return { lat: area.latitudeCenter, lng: area.longitudeCenter };
 }
 
@@ -89,7 +92,8 @@ function getBot(token: string): Telegraf {
       let location: Location;
       try {
         location = await resolveLocation(text);
-      } catch {
+      } catch (err) {
+        console.error('resolveLocation error:', err);
         await ctx.reply('Get location failed.');
         return;
       }
