@@ -1,5 +1,4 @@
 import { Telegraf } from 'telegraf';
-import axios from './axios';
 import { PlusCode, MapCodeResponse } from './types';
 
 const MAX_LAT = 45;
@@ -15,11 +14,32 @@ interface Env {
   WEBHOOK_SECRET: string;
 }
 
+async function getPlusCode(text: string): Promise<PlusCode> {
+  const res = await fetch(
+    `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`,
+    { headers: { referer: 'https://plus.codes' } }
+  );
+  return res.json();
+}
+
+async function getMapCode(lat: number, lng: number): Promise<MapCodeResponse> {
+  const res = await fetch('https://japanmapcode.com/mapcode', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `lat=${lat}&lng=${lng}`,
+  });
+  return res.json();
+}
+
 let bot: Telegraf | null = null;
 
 function getBot(token: string): Telegraf {
   if (!bot) {
     bot = new Telegraf(token);
+
+    bot.catch((err) => {
+      console.error('Bot error:', err);
+    });
 
     bot.start(ctx => {
       ctx.reply(
@@ -39,9 +59,7 @@ function getBot(token: string): Telegraf {
         await ctx.reply(`Invalid plus code!`);
         return;
       }
-      const plusCodeResult = (await axios.get(
-        `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`
-      )) as PlusCode;
+      const plusCodeResult = await getPlusCode(text);
       if (plusCodeResult.status !== 'OK') {
         await ctx.reply('Get location failed.');
         return;
@@ -54,10 +72,7 @@ function getBot(token: string): Telegraf {
         location.lng >= MIN_LNG &&
         location.lng <= MAX_LNG
       ) {
-        const mapcode = (await axios.post(
-          'https://japanmapcode.com/mapcode',
-          `lat=${location.lat}&lng=${location.lng}`
-        )) as MapCodeResponse;
+        const mapcode = await getMapCode(location.lat, location.lng);
         if (mapcode.success) {
           await ctx.replyWithHTML(
             `Mapcode: ${mapcode.mapcode}\n<a href="https://mapdoge.tomomo.org?lat=${location.lat}&lng=${location.lng}">View on drivenippon</a>`
@@ -86,7 +101,8 @@ export default {
       const update = await request.json();
       await getBot(env.BOT_TOKEN).handleUpdate(update as any);
       return new Response('OK', { status: 200 });
-    } catch {
+    } catch (err) {
+      console.error('Fetch handler error:', err);
       return new Response('Internal Server Error', { status: 500 });
     }
   },
