@@ -2,30 +2,30 @@
   "name": "mapdoge-bot",
   "private": true,
   "version": "0.0.2",
+  "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "release": "wrangler deploy",
     "tail": "wrangler tail",
     "typecheck": "tsc --noEmit",
-    "format": "prettier  --loglevel warn --write \"./**/*.{js,jsx,ts,tsx,css,md,json}\" ",
-    "lint": "eslint ./src --ext .jsx,.js,.ts,.tsx --quiet --fix --ignore-path ./.gitignore"
+    "format": "prettier --loglevel warn --write \"./**/*.{js,jsx,ts,tsx,css,md,json}\"",
+    "lint": "eslint ./src --quiet --fix"
   },
   "dependencies": {
     "open-location-code": "^1.0.3",
     "telegraf": "^4.9.1"
   },
   "devDependencies": {
-    "@commitlint/cli": "^17.1.2",
-    "@commitlint/config-conventional": "^17.1.0",
-    "@cloudflare/workers-types": "^4.20241205.0",
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
+    "@cloudflare/workers-types": "^4.20260616.1",
     "@types/open-location-code": "^1.0.1",
-    "@typescript-eslint/eslint-plugin": "^5.36.1",
-    "@typescript-eslint/parser": "^5.36.1",
-    "eslint": "^8.23.0",
-    "husky": "^8.0.1",
-    "lint-staged": "^13.0.3",
-    "prettier": "^2.7.1",
-    "typescript": "^4.8.2",
-    "wrangler": "^3.0.0"
+    "eslint": "^10.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
+    "prettier": "^3.8.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1",
+    "wrangler": "^4.100.0"
   }
 }
