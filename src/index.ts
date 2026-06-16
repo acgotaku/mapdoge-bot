@@ -1,18 +1,23 @@
 import { Telegraf } from 'telegraf';
+import { message } from 'telegraf/filters';
 import { Update } from 'telegraf/types';
 import { OpenLocationCode } from 'open-location-code';
 import { MapCodeResponse } from './types';
 
-const MAX_LAT = 45;
+const MAX_LAT = 46;
 const MIN_LAT = 20;
 const MAX_LNG = 153;
 const MIN_LNG = 122;
 
 const plusCodeRegex =
-  /([23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3})/;
+  /([23456789CFGHJMPQRVWX]{4}(?:[23456789CFGHJMPQRVWX]{2}){0,2}\+[23456789CFGHJMPQRVWX]{2,3})/;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const olc = new OpenLocationCode() as any;
+interface OLC {
+  isFull(code: string): boolean;
+  decode(code: string): { latitudeCenter: number; longitudeCenter: number };
+  recoverNearest(code: string, refLat: number, refLng: number): string;
+}
+const olc = new OpenLocationCode() as unknown as OLC;
 
 interface Env {
   BOT_TOKEN: string;
@@ -42,6 +47,7 @@ async function resolveLocation(text: string): Promise<Location> {
     `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locality)}&format=json&limit=1`,
     { headers: { 'User-Agent': 'mapdoge-bot/1.0' } }
   );
+  if (!res.ok) throw new Error(`Nominatim error: ${res.status}`);
   const geo = await res.json() as Array<{ lat: string; lon: string }>;
   if (!geo.length) throw new Error('Could not geocode locality');
 
@@ -58,6 +64,7 @@ async function getMapCode(lat: number, lng: number): Promise<MapCodeResponse> {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
     body: `lat=${lat}&lng=${lng}`,
   });
+  if (!res.ok) throw new Error(`mapcode API error: ${res.status}`);
   return res.json();
 }
 
@@ -67,13 +74,9 @@ function getBot(token: string): Telegraf {
   if (!bot) {
     bot = new Telegraf(token);
 
-    bot.catch((err) => {
-      console.error('Bot error:', err);
-    });
-
     bot.start(async ctx => {
       await ctx.reply(
-        `I can help you to query MAPCODE with Telegram.\nYou can copy plus code from Google Maps and paste it to tell me.`
+        'I can help you to query MAPCODE with Telegram.\nYou can copy plus code from Google Maps and paste it to tell me.'
       );
     });
 
@@ -83,7 +86,7 @@ function getBot(token: string): Telegraf {
       );
     });
 
-    bot.on('text', async ctx => {
+    bot.on(message('text'), async ctx => {
       const text = ctx.message.text;
       if (!plusCodeRegex.test(text)) {
         await ctx.reply('Invalid plus code!');
@@ -93,8 +96,10 @@ function getBot(token: string): Telegraf {
       try {
         location = await resolveLocation(text);
       } catch (err) {
-        console.error('resolveLocation error:', err);
-        await ctx.reply('Get location failed.');
+        const msg = err instanceof Error && err.message === 'Short code requires a locality'
+          ? 'Short plus code needs a city name, e.g. "9Q8F+6W Tokyo"'
+          : 'Get location failed.';
+        await ctx.reply(msg);
         return;
       }
       await ctx.replyWithLocation(location.lat, location.lng);
@@ -104,10 +109,16 @@ function getBot(token: string): Telegraf {
         location.lng >= MIN_LNG &&
         location.lng <= MAX_LNG
       ) {
-        const mapcode = await getMapCode(location.lat, location.lng);
+        let mapcode: MapCodeResponse;
+        try {
+          mapcode = await getMapCode(location.lat, location.lng);
+        } catch {
+          await ctx.reply('Get Mapcode failed.');
+          return;
+        }
         if (mapcode.success) {
-          await ctx.replyWithHTML(
-            `Mapcode: ${mapcode.mapcode}\n<a href="https://mapdoge.tomomo.org?lat=${location.lat}&lng=${location.lng}">View on drivenippon</a>`
+          await ctx.reply(
+            `Mapcode: ${mapcode.mapcode}\nLat: ${location.lat}, Lng: ${location.lng}`
           );
         } else {
           await ctx.reply('Get Mapcode failed.');
@@ -134,7 +145,7 @@ export default {
       await getBot(env.BOT_TOKEN).handleUpdate(update as Update);
       return new Response('OK', { status: 200 });
     } catch (err) {
-      console.error('Fetch handler error:', err);
+      console.error(err);
       return new Response('Internal Server Error', { status: 500 });
     }
   },

@@ -1,24 +1,12 @@
 {
-  "ts-node": {
-    "transpileOnly": true,
-    "require": ["typescript-transform-paths/register"]
-  },
   "compilerOptions": {
     "target": "ESNext",
-    "module": "commonjs",
-    "moduleResolution": "Node",
-    "outDir": "dist",
-    "resolveJsonModule": true,
+    "module": "ESNext",
+    "moduleResolution": "node",
     "skipLibCheck": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    },
-    "plugins": [{ "transform": "typescript-transform-paths" }]
+    "types": ["@cloudflare/workers-types"]
   },
   "include": ["src"]
 }
