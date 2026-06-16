@@ -144,7 +144,8 @@ export default {
       const update = await request.json();
       await getBot(env.BOT_TOKEN).handleUpdate(update as Update);
       return new Response('OK', { status: 200 });
-    } catch {
+    } catch (err) {
+      console.error(err);
       return new Response('Internal Server Error', { status: 500 });
     }
   },
