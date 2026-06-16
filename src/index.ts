@@ -4,13 +4,13 @@ import { Update } from 'telegraf/types';
 import { OpenLocationCode } from 'open-location-code';
 import { MapCodeResponse } from './types';
 
-const MAX_LAT = 45;
+const MAX_LAT = 46;
 const MIN_LAT = 20;
 const MAX_LNG = 153;
 const MIN_LNG = 122;
 
 const plusCodeRegex =
-  /([23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3})/;
+  /([23456789CFGHJMPQRVWX]{4}(?:[23456789CFGHJMPQRVWX]{2}){0,2}\+[23456789CFGHJMPQRVWX]{2,3})/;
 
 interface OLC {
   isFull(code: string): boolean;
@@ -74,13 +74,9 @@ function getBot(token: string): Telegraf {
   if (!bot) {
     bot = new Telegraf(token);
 
-    bot.catch((err) => {
-      console.error('Bot error:', err);
-    });
-
     bot.start(async ctx => {
       await ctx.reply(
-        `I can help you to query MAPCODE with Telegram.\nYou can copy plus code from Google Maps and paste it to tell me.`
+        'I can help you to query MAPCODE with Telegram.\nYou can copy plus code from Google Maps and paste it to tell me.'
       );
     });
 
@@ -100,8 +96,10 @@ function getBot(token: string): Telegraf {
       try {
         location = await resolveLocation(text);
       } catch (err) {
-        console.error('resolveLocation error:', err);
-        await ctx.reply('Get location failed.');
+        const msg = err instanceof Error && err.message === 'Short code requires a locality'
+          ? 'Short plus code needs a city name, e.g. "9Q8F+6W Tokyo"'
+          : 'Get location failed.';
+        await ctx.reply(msg);
         return;
       }
       await ctx.replyWithLocation(location.lat, location.lng);
@@ -114,8 +112,7 @@ function getBot(token: string): Telegraf {
         let mapcode: MapCodeResponse;
         try {
           mapcode = await getMapCode(location.lat, location.lng);
-        } catch (err) {
-          console.error('getMapCode error:', err);
+        } catch {
           await ctx.reply('Get Mapcode failed.');
           return;
         }
@@ -147,8 +144,7 @@ export default {
       const update = await request.json();
       await getBot(env.BOT_TOKEN).handleUpdate(update as Update);
       return new Response('OK', { status: 200 });
-    } catch (err) {
-      console.error('Fetch handler error:', err);
+    } catch {
       return new Response('Internal Server Error', { status: 500 });
     }
   },
