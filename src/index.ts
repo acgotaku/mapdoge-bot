@@ -40,7 +40,10 @@ async function resolveLocation(text: string): Promise<Location> {
   }
 
   // Short code — geocode the locality part with Nominatim
-  const locality = text.replace(code, '').trim().replace(/^[,\s]+/, '');
+  const locality = text
+    .replace(code, '')
+    .trim()
+    .replace(/^[,\s]+/, '');
   if (!locality) throw new Error('Short code requires a locality');
 
   const res = await fetch(
@@ -48,7 +51,7 @@ async function resolveLocation(text: string): Promise<Location> {
     { headers: { 'User-Agent': 'mapdoge-bot/1.0' } }
   );
   if (!res.ok) throw new Error(`Nominatim error: ${res.status}`);
-  const geo = await res.json() as Array<{ lat: string; lon: string }>;
+  const geo = (await res.json()) as Array<{ lat: string; lon: string }>;
   if (!geo.length) throw new Error('Could not geocode locality');
 
   const refLat = parseFloat(geo[0].lat);
@@ -61,8 +64,10 @@ async function resolveLocation(text: string): Promise<Location> {
 async function getMapCode(lat: number, lng: number): Promise<MapCodeResponse> {
   const res = await fetch('https://japanmapcode.com/mapcode', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-    body: `lat=${lat}&lng=${lng}`,
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+    },
+    body: `lat=${lat}&lng=${lng}`
   });
   if (!res.ok) throw new Error(`mapcode API error: ${res.status}`);
   return res.json();
@@ -96,9 +101,11 @@ function getBot(token: string): Telegraf {
       try {
         location = await resolveLocation(text);
       } catch (err) {
-        const msg = err instanceof Error && err.message === 'Short code requires a locality'
-          ? 'Short plus code needs a city name, e.g. "9Q8F+6W Tokyo"'
-          : 'Get location failed.';
+        const msg =
+          err instanceof Error &&
+          err.message === 'Short code requires a locality'
+            ? 'Short plus code needs a city name, e.g. "9Q8F+6W Tokyo"'
+            : 'Get location failed.';
         await ctx.reply(msg);
         return;
       }
@@ -148,5 +155,5 @@ export default {
       console.error(err);
       return new Response('Internal Server Error', { status: 500 });
     }
-  },
+  }
 };
