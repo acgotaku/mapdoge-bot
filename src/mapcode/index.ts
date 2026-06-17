@@ -92,7 +92,7 @@ function dmsToDecimal(v: string | number): number {
 const CMC_FORWARD = [5, 6, 7, 8, 0, 1, 2, 3, 4];
 const CMC_REVERSE = [4, 5, 6, 7, 8, 0, 1, 2, 3];
 
-export function fetchMapCode(lat: number, lon: number, flg = 9): string | null {
+export function encodeMapCode(lat: number, lon: number, flg = 9): string | null {
   if (lat == null || lon == null) return null;
 
   [lon, lat] = wgs84ToTokyo(lon, lat);
@@ -163,7 +163,7 @@ export function fetchMapCode(lat: number, lon: number, flg = 9): string | null {
   return mapcode;
 }
 
-export function getLonLat(
+export function decodeMapCode(
   mapcode: string
 ): { lon: number; lat: number } | null {
   const [standardPart, cmcPart] = mapcode.split('*');
@@ -204,7 +204,7 @@ export function getLonLat(
     const lonH = Math.floor(sec / 3600);
     const lonS = sec % 60;
     const lonM = Math.floor(((sec - lonS) % 3600) / 60);
-    const lonDms = `${lonH}/${String(lonM).padStart(2, '0')}/${String(lonS).padStart(2, '0')}.${Lon_ms}`;
+    const lonDms = `${lonH}/${String(lonM).padStart(2, '0')}/${String(lonS).padStart(2, '0')}.${String(Lon_ms).padStart(3, '0')}`;
 
     sec =
       area[5] * 3600 +
@@ -214,7 +214,7 @@ export function getLonLat(
     const latH = Math.floor(sec / 3600);
     const latS = sec % 60;
     const latM = Math.floor(((sec - latS) % 3600) / 60);
-    const latDms = `${latH}/${String(latM).padStart(2, '0')}/${String(latS).padStart(2, '0')}.${Lat_ms}`;
+    const latDms = `${latH}/${String(latM).padStart(2, '0')}/${String(latS).padStart(2, '0')}.${String(Lat_ms).padStart(3, '0')}`;
 
     const tkyLon = dmsToDecimal(lonDms);
     const tkyLat = dmsToDecimal(latDms);
