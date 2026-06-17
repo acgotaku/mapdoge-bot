@@ -10,10 +10,15 @@ const BESSEL_F = 1 / 299.1528128;
 
 // Simplified Molodensky datum shift (lon/lat in degrees, returns [lon, lat])
 function molodensky(
-  lonDeg: number, latDeg: number,
-  dx: number, dy: number, dz: number,
-  srcA: number, srcF: number,
-  tgtA: number, tgtF: number
+  lonDeg: number,
+  latDeg: number,
+  dx: number,
+  dy: number,
+  dz: number,
+  srcA: number,
+  srcF: number,
+  tgtA: number,
+  tgtF: number
 ): [number, number] {
   const lat = (latDeg * Math.PI) / 180;
   const lon = (lonDeg * Math.PI) / 180;
@@ -28,8 +33,11 @@ function molodensky(
   const N = srcA / W;
   const M = (srcA * (1 - srcE2)) / (W * W * W);
   const dLat =
-    (-dx * sinLat * cosLon - dy * sinLat * sinLon + dz * cosLat +
-      (srcA * df + srcF * da) * Math.sin(2 * lat)) / M;
+    (-dx * sinLat * cosLon -
+      dy * sinLat * sinLon +
+      dz * cosLat +
+      (srcA * df + srcF * da) * Math.sin(2 * lat)) /
+    M;
   const dLon = (-dx * sinLon + dy * cosLon) / (N * cosLat);
   return [lonDeg + (dLon * 180) / Math.PI, latDeg + (dLat * 180) / Math.PI];
 }
@@ -38,12 +46,32 @@ function molodensky(
 function wgs84ToTokyo(lon: number, lat: number): [number, number] {
   // towgs84=-148,507,685 means Tokyo→WGS84 shift is (-148,507,685),
   // so WGS84→Tokyo shift is the inverse: (148,-507,-685)
-  return molodensky(lon, lat, 148, -507, -685, WGS84_A, WGS84_F, BESSEL_A, BESSEL_F);
+  return molodensky(
+    lon,
+    lat,
+    148,
+    -507,
+    -685,
+    WGS84_A,
+    WGS84_F,
+    BESSEL_A,
+    BESSEL_F
+  );
 }
 
 // Tokyo Datum (EPSG:4301) → WGS84 (EPSG:4326)
 function tokyoToWgs84(lon: number, lat: number): [number, number] {
-  return molodensky(lon, lat, -148, 507, 685, BESSEL_A, BESSEL_F, WGS84_A, WGS84_F);
+  return molodensky(
+    lon,
+    lat,
+    -148,
+    507,
+    685,
+    BESSEL_A,
+    BESSEL_F,
+    WGS84_A,
+    WGS84_F
+  );
 }
 
 // DMS string ("deg/min/sec.ms") or decimal number → decimal degrees
@@ -78,8 +106,10 @@ export function fetchMapCode(lat: number, lon: number, flg = 9): string | null {
   for (let cnt = 0; cnt < Range.Area.length; cnt++) {
     const e = Range.Area[cnt];
     if (
-      e[1] * 1000 <= lon_ms && lon_ms <= e[3] * 1000 &&
-      e[2] * 1000 <= lat_ms && lat_ms <= e[4] * 1000
+      e[1] * 1000 <= lon_ms &&
+      lon_ms <= e[3] * 1000 &&
+      e[2] * 1000 <= lat_ms &&
+      lat_ms <= e[4] * 1000
     ) {
       Zn = e[0];
       matchedIdx = cnt;
@@ -108,8 +138,8 @@ export function fetchMapCode(lat: number, lon: number, flg = 9): string | null {
 
     const cn_k = Math.floor((frac_k * 3) / 1000);
     const cn_i = Math.floor((frac_i * 3) / 1000);
-    const csn_k = Math.floor(((frac_k * 3) % 1000) * 3 / 1000);
-    const csn_i = Math.floor(((frac_i * 3) % 1000) * 3 / 1000);
+    const csn_k = Math.floor((((frac_k * 3) % 1000) * 3) / 1000);
+    const csn_i = Math.floor((((frac_i * 3) % 1000) * 3) / 1000);
 
     const Cn = cn_i * 3 + cn_k;
     const Csn = csn_i * 3 + csn_k;
@@ -126,13 +156,16 @@ export function fetchMapCode(lat: number, lon: number, flg = 9): string | null {
   const Zn2 = Math.floor(wk / 1000);
 
   const pad3 = (n: number) => String(n).padStart(3, '0');
-  let mapcode = Zn2 > 0 ? `${Zn2} ${pad3(Bn2)} ${pad3(Un2)}` : `${Bn2} ${pad3(Un2)}`;
+  let mapcode =
+    Zn2 > 0 ? `${Zn2} ${pad3(Bn2)} ${pad3(Un2)}` : `${Bn2} ${pad3(Un2)}`;
   if (CMC != null) mapcode += `*${CMC}`;
 
   return mapcode;
 }
 
-export function getLonLat(mapcode: string): { lon: number; lat: number } | null {
+export function getLonLat(
+  mapcode: string
+): { lon: number; lat: number } | null {
   const [standardPart, cmcPart] = mapcode.split('*');
   const MC = parseInt(standardPart.replace(/ /g, ''), 10);
   const CMC = cmcPart ?? null;
@@ -151,8 +184,10 @@ export function getLonLat(mapcode: string): { lon: number; lat: number } | null 
     const Csn = CMC_REVERSE[Csnc];
 
     // floor((Cn%3)/3 + (Csn%3)/9) * 1000 = floor(((Cn%3)*3 + (Csn%3)) * 1000/9)
-    Lon_ms = Math.floor(((Cn % 3) * 3 + (Csn % 3)) * 1000 / 9);
-    Lat_ms = Math.floor((Math.floor(Cn / 3) * 3 + Math.floor(Csn / 3)) * 1000 / 9);
+    Lon_ms = Math.floor((((Cn % 3) * 3 + (Csn % 3)) * 1000) / 9);
+    Lat_ms = Math.floor(
+      ((Math.floor(Cn / 3) * 3 + Math.floor(Csn / 3)) * 1000) / 9
+    );
   }
 
   for (let i = 0; i < Chiku.Area.length; i++) {
@@ -161,13 +196,21 @@ export function getLonLat(mapcode: string): { lon: number; lat: number } | null 
 
     const divisor = area[1];
 
-    let sec = area[2] * 3600 + area[3] * 60 + area[4] + ((Bn % divisor) * 30 + (Un % 30));
+    let sec =
+      area[2] * 3600 +
+      area[3] * 60 +
+      area[4] +
+      ((Bn % divisor) * 30 + (Un % 30));
     const lonH = Math.floor(sec / 3600);
     const lonS = sec % 60;
     const lonM = Math.floor(((sec - lonS) % 3600) / 60);
     const lonDms = `${lonH}/${String(lonM).padStart(2, '0')}/${String(lonS).padStart(2, '0')}.${Lon_ms}`;
 
-    sec = area[5] * 3600 + area[6] * 60 + area[7] + (Math.floor(Bn / divisor) * 30 + Math.floor(Un / 30));
+    sec =
+      area[5] * 3600 +
+      area[6] * 60 +
+      area[7] +
+      (Math.floor(Bn / divisor) * 30 + Math.floor(Un / 30));
     const latH = Math.floor(sec / 3600);
     const latS = sec % 60;
     const latM = Math.floor(((sec - latS) % 3600) / 60);
