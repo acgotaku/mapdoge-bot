@@ -41,7 +41,7 @@ function isInJapan(loc: Location): boolean {
   );
 }
 
-function parseGoogleMapsCoords(url: string): Location {
+function parseGoogleMapsCoords(url: string): Location | null {
   // Pin location takes priority (more precise than viewport center)
   const pinMatch = url.match(/3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
   if (pinMatch) {
@@ -52,12 +52,47 @@ function parseGoogleMapsCoords(url: string): Location {
   if (viewMatch) {
     return { lat: parseFloat(viewMatch[1]), lng: parseFloat(viewMatch[2]) };
   }
-  throw new Error('No coordinates found in Google Maps URL');
+  return null;
+}
+
+async function nominatimGeocode(query: string): Promise<Location | null> {
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+    { headers: { 'User-Agent': 'mapdoge-bot/1.0' } }
+  );
+  if (!res.ok) return null;
+  const geo = (await res.json()) as Array<{ lat: string; lon: string }>;
+  if (!geo.length) return null;
+  return { lat: parseFloat(geo[0].lat), lng: parseFloat(geo[0].lon) };
 }
 
 async function resolveGoogleMapsUrl(url: string): Promise<Location> {
   const res = await fetch(url, { redirect: 'follow' });
-  return parseGoogleMapsCoords(res.url);
+  const finalUrl = res.url;
+
+  const coords = parseGoogleMapsCoords(finalUrl);
+  if (coords) return coords;
+
+  // GPS-share URLs (entry=gps) redirect to ?q=PLACE,ADDRESS without coordinates.
+  // Extract q=, normalize "7 Chome-2-18" → "7-2-18", then retry Nominatim
+  // progressively skipping leading non-address parts (place name, building, etc.).
+  const qParam = new URL(finalUrl).searchParams.get('q');
+  if (!qParam) throw new Error('No coordinates or address found');
+
+  const parts = qParam
+    .replace(/(\d+)\s+Chome-(\d+)-(\d+)/gi, '$1-$2-$3') // "7 Chome-2-18" → "7-2-18"
+    .replace(/\b(\w+)\s+City\b/gi, '$1')                  // "Chuo City" → "Chuo"
+    .replace(/\b\d{3}-\d{4}\b/g, '')                      // remove postal codes
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  for (let skip = 0; skip <= Math.min(3, parts.length - 2); skip++) {
+    const loc = await nominatimGeocode(parts.slice(skip).join(' '));
+    if (loc) return loc;
+  }
+
+  throw new Error('Could not geocode address from Google Maps URL');
 }
 
 async function resolvePlusCode(text: string): Promise<Location> {
