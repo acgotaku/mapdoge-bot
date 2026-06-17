@@ -234,24 +234,27 @@ export default {
       const lng = parseFloat(url.searchParams.get('lng') ?? '');
       const corsHeaders = {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': '*'
       };
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
         return new Response(JSON.stringify({ error: 'Invalid lat/lng' }), {
           status: 400,
-          headers: corsHeaders,
+          headers: corsHeaders
         });
       }
       const mapcode = encodeMapCode(lat, lng);
       if (mapcode === null) {
-        return new Response(JSON.stringify({ error: 'Location out of range' }), {
-          status: 404,
-          headers: corsHeaders,
-        });
+        return new Response(
+          JSON.stringify({ error: 'Location out of range' }),
+          {
+            status: 404,
+            headers: corsHeaders
+          }
+        );
       }
       return new Response(JSON.stringify({ mapcode, lat, lng }), {
         status: 200,
-        headers: corsHeaders,
+        headers: corsHeaders
       });
     }
     if (request.method !== 'POST') {
