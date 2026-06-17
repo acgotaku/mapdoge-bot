@@ -93,7 +93,10 @@ async function resolvePlusCode(text: string): Promise<Location> {
 }
 
 async function replyWithMapcode(
-  ctx: { reply: (msg: string) => Promise<unknown>; replyWithLocation: (lat: number, lng: number) => Promise<unknown> },
+  ctx: {
+    reply: (msg: string) => Promise<unknown>;
+    replyWithLocation: (lat: number, lng: number) => Promise<unknown>;
+  },
   location: Location
 ): Promise<void> {
   await ctx.replyWithLocation(location.lat, location.lng);
@@ -150,9 +153,7 @@ function getBot(token: string): Telegraf {
 
       // Plus code
       if (!plusCodeRegex.test(text)) {
-        await ctx.reply(
-          'Please send a Google Maps URL or a plus code.'
-        );
+        await ctx.reply('Please send a Google Maps URL or a plus code.');
         return;
       }
       let location: Location;
