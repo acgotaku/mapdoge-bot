@@ -228,6 +228,32 @@ function getBot(token: string): Telegraf {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    if (request.method === 'GET') {
+      const url = new URL(request.url);
+      const lat = parseFloat(url.searchParams.get('lat') ?? '');
+      const lng = parseFloat(url.searchParams.get('lng') ?? '');
+      const corsHeaders = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      };
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return new Response(JSON.stringify({ error: 'Invalid lat/lng' }), {
+          status: 400,
+          headers: corsHeaders,
+        });
+      }
+      const mapcode = encodeMapCode(lat, lng);
+      if (mapcode === null) {
+        return new Response(JSON.stringify({ error: 'Location out of range' }), {
+          status: 404,
+          headers: corsHeaders,
+        });
+      }
+      return new Response(JSON.stringify({ mapcode, lat, lng }), {
+        status: 200,
+        headers: corsHeaders,
+      });
+    }
     if (request.method !== 'POST') {
       return new Response('MapDoge Bot is running!', { status: 200 });
     }
