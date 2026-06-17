@@ -2,7 +2,7 @@ import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { Update } from 'telegraf/types';
 import { OpenLocationCode } from 'open-location-code';
-import { MapCodeResponse } from './types';
+import { encodeMapCode } from './mapcode';
 
 const MAX_LAT = 46;
 const MIN_LAT = 20;
@@ -11,6 +11,19 @@ const MIN_LNG = 122;
 
 const plusCodeRegex =
   /([23456789CFGHJMPQRVWX]{4}(?:[23456789CFGHJMPQRVWX]{2}){0,2}\+[23456789CFGHJMPQRVWX]{2,3})/;
+
+const googleMapsUrlRegex =
+  /https?:\/\/(?:maps\.app\.goo\.gl\/\S+|goo\.gl\/maps\/\S+|(?:www\.)?google\.com\/maps\/\S+|maps\.google\.com\/\S+)/;
+
+const GOOGLE_MAPS_HOSTS = new Set([
+  'maps.app.goo.gl',
+  'goo.gl',
+  'www.google.com',
+  'google.com',
+  'maps.google.com'
+]);
+
+const FETCH_TIMEOUT_MS = 5000;
 
 interface OLC {
   isFull(code: string): boolean;
@@ -29,7 +42,76 @@ interface Location {
   lng: number;
 }
 
-async function resolveLocation(text: string): Promise<Location> {
+function isInJapan(loc: Location): boolean {
+  return (
+    loc.lat >= MIN_LAT &&
+    loc.lat <= MAX_LAT &&
+    loc.lng >= MIN_LNG &&
+    loc.lng <= MAX_LNG
+  );
+}
+
+function parseGoogleMapsCoords(url: string): Location | null {
+  // Pin location takes priority (more precise than viewport center)
+  const pinMatch = url.match(/3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
+  if (pinMatch) {
+    return { lat: parseFloat(pinMatch[1]), lng: parseFloat(pinMatch[2]) };
+  }
+  // Fallback: viewport center @lat,lon,zoom
+  const viewMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (viewMatch) {
+    return { lat: parseFloat(viewMatch[1]), lng: parseFloat(viewMatch[2]) };
+  }
+  return null;
+}
+
+async function nominatimGeocode(query: string): Promise<Location | null> {
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+    { headers: { 'User-Agent': 'mapdoge-bot/1.0' } }
+  );
+  if (!res.ok) return null;
+  const geo = (await res.json()) as Array<{ lat: string; lon: string }>;
+  if (!geo.length) return null;
+  return { lat: parseFloat(geo[0].lat), lng: parseFloat(geo[0].lon) };
+}
+
+async function resolveGoogleMapsUrl(url: string): Promise<Location> {
+  const res = await fetch(url, {
+    redirect: 'follow',
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+  });
+  const finalUrl = res.url;
+  if (!GOOGLE_MAPS_HOSTS.has(new URL(finalUrl).hostname)) {
+    throw new Error('Redirect to untrusted host');
+  }
+
+  const coords = parseGoogleMapsCoords(finalUrl);
+  if (coords) return coords;
+
+  // GPS-share URLs (entry=gps) redirect to ?q=PLACE,ADDRESS without coordinates.
+  // Extract q=, normalize "7 Chome-2-18" → "7-2-18", then retry Nominatim
+  // progressively skipping leading non-address parts (place name, building, etc.).
+  const qParam = new URL(finalUrl).searchParams.get('q');
+  if (!qParam) throw new Error('No coordinates or address found');
+
+  const parts = qParam
+    .replace(/(\d+)\s+Chome-(\d+)-(\d+)/gi, '$1-$2-$3') // "7 Chome-2-18" → "7-2-18"
+    .replace(/\b(\w+)\s+City\b/gi, '$1') // "Chuo City" → "Chuo"
+    .replace(/\b\d{3}-\d{4}\b/g, '') // remove postal codes
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  for (let skip = 0; skip <= Math.min(3, parts.length - 2); skip++) {
+    const loc = await nominatimGeocode(parts.slice(skip).join(' '));
+    if (loc) return loc;
+  }
+
+  throw new Error('Could not geocode address from Google Maps URL');
+}
+
+async function resolvePlusCode(text: string): Promise<Location> {
   const match = text.match(plusCodeRegex);
   if (!match) throw new Error('No plus code found');
   const code = match[1];
@@ -61,16 +143,26 @@ async function resolveLocation(text: string): Promise<Location> {
   return { lat: area.latitudeCenter, lng: area.longitudeCenter };
 }
 
-async function getMapCode(lat: number, lng: number): Promise<MapCodeResponse> {
-  const res = await fetch('https://japanmapcode.com/mapcode', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-    },
-    body: `lat=${lat}&lng=${lng}`
-  });
-  if (!res.ok) throw new Error(`mapcode API error: ${res.status}`);
-  return res.json();
+async function replyWithMapcode(
+  ctx: {
+    reply: (msg: string) => Promise<unknown>;
+    replyWithLocation: (lat: number, lng: number) => Promise<unknown>;
+  },
+  location: Location
+): Promise<void> {
+  await ctx.replyWithLocation(location.lat, location.lng);
+  if (!isInJapan(location)) {
+    await ctx.reply('Location is outside Japan.');
+    return;
+  }
+  const mapcode = encodeMapCode(location.lat, location.lng);
+  if (mapcode) {
+    await ctx.reply(
+      `Mapcode: ${mapcode}\nLat: ${location.lat}, Lng: ${location.lng}`
+    );
+  } else {
+    await ctx.reply('Get Mapcode failed.');
+  }
 }
 
 let bot: Telegraf | null = null;
@@ -81,25 +173,44 @@ function getBot(token: string): Telegraf {
 
     bot.start(async ctx => {
       await ctx.reply(
-        'I can help you to query MAPCODE with Telegram.\nYou can copy plus code from Google Maps and paste it to tell me.'
+        'I can help you to query MAPCODE with Telegram.\n' +
+          'Send me a Google Maps URL or a plus code.'
       );
     });
 
     bot.help(async ctx => {
       await ctx.replyWithHTML(
-        'Send me a <a href="https://maps.google.com/pluscodes/">plus code</a>'
+        'Send me a Google Maps share URL (maps.app.goo.gl/…) or a ' +
+          '<a href="https://maps.google.com/pluscodes/">plus code</a>.'
       );
     });
 
     bot.on(message('text'), async ctx => {
       const text = ctx.message.text;
+
+      // Google Maps URL
+      const gmUrlMatch = text.match(googleMapsUrlRegex);
+      if (gmUrlMatch) {
+        const gmUrl = gmUrlMatch[0].replace(/[.,!?)\]>'"]+$/, '');
+        let location: Location;
+        try {
+          location = await resolveGoogleMapsUrl(gmUrl);
+        } catch {
+          await ctx.reply('Could not extract location from Google Maps URL.');
+          return;
+        }
+        await replyWithMapcode(ctx, location);
+        return;
+      }
+
+      // Plus code
       if (!plusCodeRegex.test(text)) {
-        await ctx.reply('Invalid plus code!');
+        await ctx.reply('Please send a Google Maps URL or a plus code.');
         return;
       }
       let location: Location;
       try {
-        location = await resolveLocation(text);
+        location = await resolvePlusCode(text);
       } catch (err) {
         const msg =
           err instanceof Error &&
@@ -109,30 +220,7 @@ function getBot(token: string): Telegraf {
         await ctx.reply(msg);
         return;
       }
-      await ctx.replyWithLocation(location.lat, location.lng);
-      if (
-        location.lat >= MIN_LAT &&
-        location.lat <= MAX_LAT &&
-        location.lng >= MIN_LNG &&
-        location.lng <= MAX_LNG
-      ) {
-        let mapcode: MapCodeResponse;
-        try {
-          mapcode = await getMapCode(location.lat, location.lng);
-        } catch {
-          await ctx.reply('Get Mapcode failed.');
-          return;
-        }
-        if (mapcode.success) {
-          await ctx.reply(
-            `Mapcode: ${mapcode.mapcode}\nLat: ${location.lat}, Lng: ${location.lng}`
-          );
-        } else {
-          await ctx.reply('Get Mapcode failed.');
-        }
-      } else {
-        await ctx.reply('Invalid Japan plus code!');
-      }
+      await replyWithMapcode(ctx, location);
     });
   }
   return bot;
