@@ -165,6 +165,12 @@ async function replyWithMapcode(
   }
 }
 
+const CORS_HEADERS = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS'
+};
+
 let bot: Telegraf | null = null;
 
 function getBot(token: string): Telegraf {
@@ -228,6 +234,40 @@ function getBot(token: string): Telegraf {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+    if (request.method === 'GET') {
+      const url = new URL(request.url);
+      const latRaw = url.searchParams.get('lat');
+      const lngRaw = url.searchParams.get('lng');
+      const lat = latRaw !== null ? Number(latRaw) : NaN;
+      const lng = lngRaw !== null ? Number(lngRaw) : NaN;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return new Response(JSON.stringify({ error: 'Invalid lat/lng' }), {
+          status: 400,
+          headers: CORS_HEADERS
+        });
+      }
+      const location = { lat, lng };
+      if (!isInJapan(location)) {
+        return new Response(
+          JSON.stringify({ error: 'Location out of range' }),
+          { status: 404, headers: CORS_HEADERS }
+        );
+      }
+      const mapcode = encodeMapCode(lat, lng);
+      if (mapcode === null) {
+        return new Response(
+          JSON.stringify({ error: 'Location out of range' }),
+          { status: 404, headers: CORS_HEADERS }
+        );
+      }
+      return new Response(JSON.stringify({ mapcode, lat, lng }), {
+        status: 200,
+        headers: CORS_HEADERS
+      });
+    }
     if (request.method !== 'POST') {
       return new Response('MapDoge Bot is running!', { status: 200 });
     }
