@@ -92,7 +92,11 @@ function dmsToDecimal(v: string | number): number {
 const CMC_FORWARD = [5, 6, 7, 8, 0, 1, 2, 3, 4];
 const CMC_REVERSE = [4, 5, 6, 7, 8, 0, 1, 2, 3];
 
-export function encodeMapCode(lat: number, lon: number, flg = 9): string | null {
+export function encodeMapCode(
+  lat: number,
+  lon: number,
+  flg = 9
+): string | null {
   if (lat == null || lon == null) return null;
 
   [lon, lat] = wgs84ToTokyo(lon, lat);
