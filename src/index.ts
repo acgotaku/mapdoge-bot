@@ -15,6 +15,16 @@ const plusCodeRegex =
 const googleMapsUrlRegex =
   /https?:\/\/(?:maps\.app\.goo\.gl\/\S+|goo\.gl\/maps\/\S+|(?:www\.)?google\.com\/maps\/\S+|maps\.google\.com\/\S+)/;
 
+const GOOGLE_MAPS_HOSTS = new Set([
+  'maps.app.goo.gl',
+  'goo.gl',
+  'www.google.com',
+  'google.com',
+  'maps.google.com'
+]);
+
+const FETCH_TIMEOUT_MS = 5000;
+
 interface OLC {
   isFull(code: string): boolean;
   decode(code: string): { latitudeCenter: number; longitudeCenter: number };
@@ -67,8 +77,14 @@ async function nominatimGeocode(query: string): Promise<Location | null> {
 }
 
 async function resolveGoogleMapsUrl(url: string): Promise<Location> {
-  const res = await fetch(url, { redirect: 'follow' });
+  const res = await fetch(url, {
+    redirect: 'follow',
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+  });
   const finalUrl = res.url;
+  if (!GOOGLE_MAPS_HOSTS.has(new URL(finalUrl).hostname)) {
+    throw new Error('Redirect to untrusted host');
+  }
 
   const coords = parseGoogleMapsCoords(finalUrl);
   if (coords) return coords;
@@ -175,9 +191,10 @@ function getBot(token: string): Telegraf {
       // Google Maps URL
       const gmUrlMatch = text.match(googleMapsUrlRegex);
       if (gmUrlMatch) {
+        const gmUrl = gmUrlMatch[0].replace(/[.,!?)\]>'"]+$/, '');
         let location: Location;
         try {
-          location = await resolveGoogleMapsUrl(gmUrlMatch[0]);
+          location = await resolveGoogleMapsUrl(gmUrl);
         } catch {
           await ctx.reply('Could not extract location from Google Maps URL.');
           return;
