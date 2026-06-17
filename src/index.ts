@@ -81,8 +81,8 @@ async function resolveGoogleMapsUrl(url: string): Promise<Location> {
 
   const parts = qParam
     .replace(/(\d+)\s+Chome-(\d+)-(\d+)/gi, '$1-$2-$3') // "7 Chome-2-18" → "7-2-18"
-    .replace(/\b(\w+)\s+City\b/gi, '$1')                  // "Chuo City" → "Chuo"
-    .replace(/\b\d{3}-\d{4}\b/g, '')                      // remove postal codes
+    .replace(/\b(\w+)\s+City\b/gi, '$1') // "Chuo City" → "Chuo"
+    .replace(/\b\d{3}-\d{4}\b/g, '') // remove postal codes
     .split(',')
     .map(s => s.trim())
     .filter(Boolean);
