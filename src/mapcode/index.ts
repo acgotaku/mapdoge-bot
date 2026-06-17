@@ -170,9 +170,14 @@ export function encodeMapCode(
 export function decodeMapCode(
   mapcode: string
 ): { lon: number; lat: number } | null {
-  const [standardPart, cmcPart] = mapcode.split('*');
-  const MC = parseInt(standardPart.replace(/ /g, ''), 10);
-  const CMC = cmcPart ?? null;
+  const parts = mapcode.split('*');
+  if (parts.length > 2) return null;
+  const [standardPartRaw, cmcPartRaw] = parts;
+  const standardDigits = standardPartRaw.replace(/\s+/g, '');
+  if (!/^\d+$/.test(standardDigits)) return null;
+  const MC = Number.parseInt(standardDigits, 10);
+  const CMC = cmcPartRaw != null ? cmcPartRaw.trim() : null;
+  if (CMC != null && !/^\d{1,2}$/.test(CMC)) return null;
 
   const wk = Math.floor(MC / 1000);
   const Zn = Math.floor(wk / 1000);
