@@ -1,7 +1,6 @@
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { Update } from 'telegraf/types';
-import { OpenLocationCode } from 'open-location-code';
 import { encodeMapCode } from './mapcode';
 
 const MAX_LAT = 46;
@@ -25,12 +24,17 @@ const GOOGLE_MAPS_HOSTS = new Set([
 
 const FETCH_TIMEOUT_MS = 5000;
 
-interface OLC {
-  isFull(code: string): boolean;
-  decode(code: string): { latitudeCenter: number; longitudeCenter: number };
-  recoverNearest(code: string, refLat: number, refLng: number): string;
+interface PlusCodeApiResponse {
+  plus_code?: {
+    geometry?: {
+      bounds?: {
+        northeast: { lat: number; lng: number };
+        southwest: { lat: number; lng: number };
+      };
+      location?: { lat: number; lng: number };
+    };
+  };
 }
-const olc = new OpenLocationCode() as unknown as OLC;
 
 interface Env {
   BOT_TOKEN: string;
@@ -112,35 +116,34 @@ async function resolveGoogleMapsUrl(url: string): Promise<Location> {
 }
 
 async function resolvePlusCode(text: string): Promise<Location> {
-  const match = text.match(plusCodeRegex);
-  if (!match) throw new Error('No plus code found');
-  const code = match[1];
-
-  if (olc.isFull(code)) {
-    const area = olc.decode(code);
-    return { lat: area.latitudeCenter, lng: area.longitudeCenter };
-  }
-
-  // Short code — geocode the locality part with Nominatim
-  const locality = text
-    .replace(code, '')
-    .trim()
-    .replace(/^[,\s]+/, '');
-  if (!locality) throw new Error('Short code requires a locality');
+  if (!plusCodeRegex.test(text)) throw new Error('No plus code found');
 
   const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locality)}&format=json&limit=1`,
-    { headers: { 'User-Agent': 'mapdoge-bot/1.0' } }
+    `https://plus.codes/api?address=${encodeURIComponent(text)}&language=ja`,
+    {
+      headers: {
+        Referer: 'https://plus.codes',
+        'User-Agent': 'mapdoge-bot/1.0'
+      },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+    }
   );
-  if (!res.ok) throw new Error(`Nominatim error: ${res.status}`);
-  const geo = (await res.json()) as Array<{ lat: string; lon: string }>;
-  if (!geo.length) throw new Error('Could not geocode locality');
+  if (!res.ok) throw new Error(`plus.codes API error: ${res.status}`);
 
-  const refLat = parseFloat(geo[0].lat);
-  const refLng = parseFloat(geo[0].lon);
-  const fullCode = olc.recoverNearest(code, refLat, refLng);
-  const area = olc.decode(fullCode);
-  return { lat: area.latitudeCenter, lng: area.longitudeCenter };
+  const data = (await res.json()) as PlusCodeApiResponse;
+  const geometry = data.plus_code?.geometry;
+  if (!geometry) throw new Error('No geometry in plus.codes response');
+
+  if (geometry.location) {
+    return { lat: geometry.location.lat, lng: geometry.location.lng };
+  }
+  if (geometry.bounds) {
+    return {
+      lat: (geometry.bounds.northeast.lat + geometry.bounds.southwest.lat) / 2,
+      lng: (geometry.bounds.northeast.lng + geometry.bounds.southwest.lng) / 2
+    };
+  }
+  throw new Error('No location data in plus.codes response');
 }
 
 async function replyWithMapcode(
@@ -217,13 +220,8 @@ function getBot(token: string): Telegraf {
       let location: Location;
       try {
         location = await resolvePlusCode(text);
-      } catch (err) {
-        const msg =
-          err instanceof Error &&
-          err.message === 'Short code requires a locality'
-            ? 'Short plus code needs a city name, e.g. "9Q8F+6W Tokyo"'
-            : 'Get location failed.';
-        await ctx.reply(msg);
+      } catch {
+        await ctx.reply('Get location failed.');
         return;
       }
       await replyWithMapcode(ctx, location);
