@@ -125,11 +125,12 @@ async function resolvePlusCode(text: string): Promise<Location> {
   const locality = text
     .replace(code, '')
     .trim()
-    .replace(/^[,\s]+/, '');
+    .replace(/^[,\s]+/, '')
+    .replace(/\b(\w+)\s+City\b/gi, '$1'); // "Chuo City" → "Chuo" so ward names resolve correctly
   if (!locality) throw new Error('Short code requires a locality');
 
   const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locality)}&format=json&limit=1`,
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locality)}&format=json&limit=1&countrycodes=jp`,
     { headers: { 'User-Agent': 'mapdoge-bot/1.0' } }
   );
   if (!res.ok) throw new Error(`Nominatim error: ${res.status}`);
